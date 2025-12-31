@@ -6,7 +6,7 @@ st.set_page_config(page_title="JPG/PNG → GIF (静止)", page_icon="🖼️")
 st.title("🖼️JPG/PNG → GIF 変換")
 st.write("1枚のJPG/PNGファイルを静止GIFに変換してダウンロードできます。")
 
-uploaded_file = st.file_uploader("JPG または PNG をアップロード", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("JPGまたはPNGをアップロード", type=["jpg", "jpeg", "png"])
 
 if uploaded_file:
     try:
@@ -25,7 +25,7 @@ if uploaded_file:
         buf.seek(0)
 
         st.download_button(
-            "GIF をダウンロード",
+            "GIFをダウンロード",
             data=buf,
             file_name="converted.gif",
             mime="image/gif",
@@ -33,6 +33,7 @@ if uploaded_file:
     except Exception as e:
         st.error(f"変換に失敗しました: {e}")
 else:
-    st.info("JPG/PNG を1枚アップロードしてください。")
+    st.info("JPG/PNGを1枚アップロードしてください。")
+
 
 
