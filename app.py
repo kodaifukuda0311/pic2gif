@@ -3,7 +3,7 @@ import streamlit as st
 from PIL import Image
 
 st.set_page_config(page_title="JPG/PNG → GIF (静止)", page_icon="🖼️")
-st.title("🖼️ JPG/PNG → GIF 変換（静止GIF）")
+st.title("🖼️JPG/PNG → GIF 変換")
 st.write("1枚の JPG/PNG を静止GIFに変換してダウンロードできます。")
 
 uploaded_file = st.file_uploader("JPG または PNG をアップロード", type=["jpg", "jpeg", "png"])
@@ -34,3 +34,4 @@ if uploaded_file:
         st.error(f"変換に失敗しました: {e}")
 else:
     st.info("JPG/PNG を1枚アップロードしてください。")
+
