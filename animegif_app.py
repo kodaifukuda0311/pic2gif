@@ -8,7 +8,7 @@ APP_NAME = "Pic2GIF"
 
 st.set_page_config(page_title=APP_NAME, page_icon="🖼️")
 st.title(f"🖼️ JPG/PGN → アニメGIF変換器")
-st.write("1枚の画像から、ほぼ静止に見えるアニメGIFを作ります。")
+st.write("1枚の画像から、ほぼ静止画に見えるアニメGIFを作ります。")
 
 uploaded_file = st.file_uploader(
     "JPG または PNG をアップロード",
@@ -83,3 +83,4 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
