@@ -16,7 +16,7 @@ uploaded_file = st.file_uploader(
 )
 
 # ===== 固定パラメータ（静止寄り） =====
-FRAMES_COUNT = 15
+FRAMES_COUNT = 10
 DURATION_MS = 250
 ZOOM_STRENGTH_PCT = 0.18
 
@@ -94,7 +94,7 @@ if uploaded_file:
             duration=DURATION_MS,
             loop=0,
             disposal=2,
-            optimize=True,
+            optimize=False,
         )
         buf.seek(0)
 
@@ -111,4 +111,5 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
 
