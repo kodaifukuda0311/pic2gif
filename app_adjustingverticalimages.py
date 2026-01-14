@@ -7,8 +7,8 @@ from PIL import Image
 APP_NAME = "JPG/PNG → アニメGIF変換器"
 
 st.set_page_config(page_title=APP_NAME, page_icon="🖼️")
-st.title(f"🖼️{APP_NAME}")
-st.write("1枚の画像から、ほぼ静止に見えるアニメGIFを作ります（縦長は左右に余白をつけて22:23程度に）。")
+st.title(f"🖼️ {APP_NAME}")
+st.write("1枚の画像から、ほぼ静止画に見えるアニメGIFを作ります。縦長の画像は左右に余白を加えます。")
 
 uploaded_file = st.file_uploader(
     "JPG または PNG をアップロード",
@@ -18,48 +18,39 @@ uploaded_file = st.file_uploader(
 # ===== 固定パラメータ（静止寄り） =====
 FRAMES_COUNT = 15
 DURATION_MS = 250
-ZOOM_STRENGTH_PCT = 0.2
+ZOOM_STRENGTH_PCT = 0.18
 
-# ===== 目標アスペクト比 =====
-TARGET_W = 22
-TARGET_H = 23
-TARGET_RATIO = TARGET_W / TARGET_H  # width / height
+# ===== 目標アスペクト比（22:23）=====
+TARGET_RATIO = 22 / 23  # width / height
 
 def ease_in_out_sine(t: float) -> float:
     return 0.5 - 0.5 * math.cos(math.pi * t)
 
 def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
     """
-    縦長（w/h < TARGET_RATIO）の場合だけ左右に余白を足して、
-    幅/高さ ≒ TARGET_RATIO になるようにする。
-    横長（w/h >= TARGET_RATIO）はそのまま返す。
+    縦長（w/h < 22/23）の場合のみ左右に余白を追加。
+    横長はそのまま返す。
     """
-    # 余白を足すため RGBA に寄せる（透過PNGは透過を維持しやすい）
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGBA")
 
     w, h = img.size
-    current_ratio = w / h
+    if w / h >= TARGET_RATIO:
+        return img  # 横長はそのまま
 
-    # 横長はそのまま
-    if current_ratio >= TARGET_RATIO:
-        return img
-
-    # 縦長 → 高さは維持して、必要な幅まで左右に余白を足す
     new_w = math.ceil(h * TARGET_RATIO)
-    pad_total = new_w - w
-    pad_left = pad_total // 2
-    pad_right = pad_total - pad_left
+    pad_left = (new_w - w) // 2
+    pad_right = new_w - w - pad_left
 
-    # 背景：PNGなど透過がある場合は透明、JPGなどは白
-    has_alpha = ("A" in img.getbands()) or (img.mode == "RGBA")
+    # 背景：透過あり → 透明 / なし → 白
+    has_alpha = "A" in img.getbands()
     bg = (0, 0, 0, 0) if has_alpha else (255, 255, 255, 255)
 
     canvas = Image.new("RGBA", (new_w, h), bg)
     canvas.paste(img.convert("RGBA"), (pad_left, 0))
     return canvas
 
-def make_almost_still_gif_frames(img: Image.Image):
+def make_almost_still_frames(img: Image.Image):
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGBA")
 
@@ -68,14 +59,14 @@ def make_almost_still_gif_frames(img: Image.Image):
 
     for i in range(FRAMES_COUNT):
         x = i / (FRAMES_COUNT - 1)
-        tri = 1.0 - abs(2.0 * x - 1.0)  # 0→1→0
+        tri = 1.0 - abs(2.0 * x - 1.0)   # 0→1→0
         eased = ease_in_out_sine(tri)
         zoom = 1.0 + (ZOOM_STRENGTH_PCT / 100.0) * eased
 
         nw, nh = int(w * zoom), int(h * zoom)
         frame = img.resize((nw, nh), Image.LANCZOS)
 
-        # 中央クロップして元サイズへ
+        # 中央クロップ
         left = (nw - w) // 2
         top = (nh - h) // 2
         frame = frame.crop((left, top, left + w, top + h))
@@ -88,16 +79,11 @@ if uploaded_file:
         img = Image.open(uploaded_file)
         img.load()
 
-        st.subheader("元画像")
-        st.image(img, use_container_width=True)
+        # 縦長のみ余白調整
+        adjusted = pad_to_target_ratio_if_portrait(img)
 
-        # 縦長だけ 22:23 に寄せる（左右余白）
-        padded = pad_to_target_ratio_if_portrait(img)
-
-        st.subheader("余白調整後（縦長のみ）")
-        st.image(padded, use_container_width=True)
-
-        frames = make_almost_still_gif_frames(padded)
+        # ほぼ静止のアニメGIF生成
+        frames = make_almost_still_frames(adjusted)
 
         buf = io.BytesIO()
         frames[0].save(
@@ -125,3 +111,4 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
