@@ -14,7 +14,6 @@ FRAMES_COUNT = 10               # 動く判定には十分。軽量化にも効�
 DURATION_MS = 250               # フレーム間隔
 ZOOM_STRENGTH_PCT = 0.18        # ほぼ静止に見える程度（必要なら0.10〜0.18）
 
-# 안정性優先：基本OFF（軽くて落ちにくい）
 # 画像が小さいときだけONにしたいなら、下の do_optimize を True/False で調整
 OPTIMIZE_ALWAYS = False
 
@@ -168,3 +167,4 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
