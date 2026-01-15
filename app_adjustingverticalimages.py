@@ -8,18 +8,17 @@ from PIL import Image
 # ======================
 APP_NAME = "JPG/PNG → アニメGIF変換器"
 TARGET_RATIO = 22 / 23          # 幅/高さ
-MAX_SIDE = 720                  # X(Postpone)向けに安全寄り
-GIF_COLORS = 256                # 要望どおり256色
-FRAMES_COUNT = 10               # 動く判定には十分。軽量化にも効く
+MAX_SIDE = 720                  # X・Postpone向けにサイズ抑制
+GIF_COLORS = 256                # 256色
+FRAMES_COUNT = 10               # フレーム数
 DURATION_MS = 250               # フレーム間隔
 ZOOM_STRENGTH_PCT = 0.18        # ほぼ静止に見える程度（必要なら0.10〜0.18）
 
-# 画像が小さいときだけONにしたいなら、下の do_optimize を True/False で調整
 OPTIMIZE_ALWAYS = False
 
 st.set_page_config(page_title=APP_NAME, page_icon="🖼️")
 st.title(f"🖼️ {APP_NAME}")
-st.write("1枚の画像から、ほぼ静止に見えるアニメGIFを作ります（縦長画像は左右余白で 22:23 に寄せます）。")
+st.write("1枚の画像から、ほぼ静止画に見えるアニメGIFを作ります（縦長画像は左右余白で22:23に）。")
 
 uploaded_file = st.file_uploader("JPG または PNG をアップロード", type=["jpg", "jpeg", "png"])
 
@@ -42,7 +41,7 @@ def resize_max_side(img: Image.Image, max_side: int) -> Image.Image:
 
 def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
     """
-    縦長（w/h < TARGET_RATIO）のときだけ左右に余白を足して 22:23 に寄せる。
+    縦長（w/h < TARGET_RATIO）のときだけ左右に余白を足して22:23に寄せる。
     横長（w/h >= TARGET_RATIO）はそのまま返す。
     """
     # 余白を足すのでRGBAに寄せる（透過PNGにも対応しやすい）
@@ -167,4 +166,5 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
 
