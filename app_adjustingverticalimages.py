@@ -3,34 +3,50 @@ import math
 import streamlit as st
 from PIL import Image
 
-# ===== アプリ情報 =====
+# ======================
+# アプリ設定（固定）
+# ======================
 APP_NAME = "JPG/PNG → アニメGIF変換器"
+TARGET_RATIO = 22 / 23          # 幅/高さ
+MAX_SIDE = 720                  # X(Postpone)向けに安全寄り
+GIF_COLORS = 256                # 要望どおり256色
+FRAMES_COUNT = 10               # 動く判定には十分。軽量化にも効く
+DURATION_MS = 250               # フレーム間隔
+ZOOM_STRENGTH_PCT = 0.18        # ほぼ静止に見える程度（必要なら0.10〜0.18）
+
+# 안정性優先：基本OFF（軽くて落ちにくい）
+# 画像が小さいときだけONにしたいなら、下の do_optimize を True/False で調整
+OPTIMIZE_ALWAYS = False
 
 st.set_page_config(page_title=APP_NAME, page_icon="🖼️")
 st.title(f"🖼️ {APP_NAME}")
-st.write("1枚の画像から、ほぼ静止画に見えるアニメGIFを作ります。縦長の画像は左右に余白を加えます。")
+st.write("1枚の画像から、ほぼ静止に見えるアニメGIFを作ります（縦長画像は左右余白で 22:23 に寄せます）。")
 
-uploaded_file = st.file_uploader(
-    "JPG または PNG をアップロード",
-    type=["jpg", "jpeg", "png"]
-)
+uploaded_file = st.file_uploader("JPG または PNG をアップロード", type=["jpg", "jpeg", "png"])
 
-# ===== 固定パラメータ（静止寄り） =====
-FRAMES_COUNT = 10
-DURATION_MS = 250
-ZOOM_STRENGTH_PCT = 0.18
-
-# ===== 目標アスペクト比（22:23）=====
-TARGET_RATIO = 22 / 23  # width / height
 
 def ease_in_out_sine(t: float) -> float:
+    """0→1 を端でゆっくりにするイージング"""
     return 0.5 - 0.5 * math.cos(math.pi * t)
+
+
+def resize_max_side(img: Image.Image, max_side: int) -> Image.Image:
+    """最大辺を max_side に収める（縦横比は維持）"""
+    w, h = img.size
+    m = max(w, h)
+    if m <= max_side:
+        return img
+    scale = max_side / m
+    new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
+    return img.resize(new_size, Image.LANCZOS)
+
 
 def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
     """
-    縦長（w/h < 22/23）の場合のみ左右に余白を追加。
-    横長はそのまま返す。
+    縦長（w/h < TARGET_RATIO）のときだけ左右に余白を足して 22:23 に寄せる。
+    横長（w/h >= TARGET_RATIO）はそのまま返す。
     """
+    # 余白を足すのでRGBAに寄せる（透過PNGにも対応しやすい）
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGBA")
 
@@ -40,9 +56,8 @@ def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
 
     new_w = math.ceil(h * TARGET_RATIO)
     pad_left = (new_w - w) // 2
-    pad_right = new_w - w - pad_left
 
-    # 背景：透過あり → 透明 / なし → 白
+    # 背景：透過ありなら透明、なければ白
     has_alpha = "A" in img.getbands()
     bg = (0, 0, 0, 0) if has_alpha else (255, 255, 255, 255)
 
@@ -50,15 +65,18 @@ def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
     canvas.paste(img.convert("RGBA"), (pad_left, 0))
     return canvas
 
+
 def make_almost_still_frames(img: Image.Image):
+    """微ズームで「ほぼ静止に見える」フレーム列を作る"""
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGBA")
 
     w, h = img.size
     frames = []
+    n = FRAMES_COUNT
 
-    for i in range(FRAMES_COUNT):
-        x = i / (FRAMES_COUNT - 1)
+    for i in range(n):
+        x = i / (n - 1) if n > 1 else 0.0
         tri = 1.0 - abs(2.0 * x - 1.0)   # 0→1→0
         eased = ease_in_out_sine(tri)
         zoom = 1.0 + (ZOOM_STRENGTH_PCT / 100.0) * eased
@@ -66,7 +84,7 @@ def make_almost_still_frames(img: Image.Image):
         nw, nh = int(w * zoom), int(h * zoom)
         frame = img.resize((nw, nh), Image.LANCZOS)
 
-        # 中央クロップ
+        # 中央クロップで元サイズに戻す
         left = (nw - w) // 2
         top = (nh - h) // 2
         frame = frame.crop((left, top, left + w, top + h))
@@ -74,42 +92,79 @@ def make_almost_still_frames(img: Image.Image):
 
     return frames
 
+
+def quantize_to_256(frame: Image.Image) -> Image.Image:
+    """
+    GIF向けに256色パレットへ。
+    透過PNGはSNS/変換経路で崩れやすいので、互換性と容量優先で白合成→256色化。
+    """
+    if frame.mode == "RGBA":
+        bg = Image.new("RGB", frame.size, (255, 255, 255))
+        bg.paste(frame, mask=frame.split()[-1])
+        frame = bg
+    elif frame.mode != "RGB":
+        frame = frame.convert("RGB")
+
+    return frame.quantize(colors=GIF_COLORS, method=Image.MEDIANCUT, dither=Image.NONE)
+
+
 if uploaded_file:
     try:
-        img = Image.open(uploaded_file)
-        img.load()
+        with st.spinner("GIFを生成中..."):
+            img = Image.open(uploaded_file)
+            img.load()
 
-        # 縦長のみ余白調整
-        adjusted = pad_to_target_ratio_if_portrait(img)
+            # 1) まず縮小（入力がデカいと落ちる＆重いので）
+            img = resize_max_side(img, MAX_SIDE)
 
-        # ほぼ静止のアニメGIF生成
-        frames = make_almost_still_frames(adjusted)
+            # 2) 縦長のみ左右余白で22:23へ
+            img = pad_to_target_ratio_if_portrait(img)
 
-        buf = io.BytesIO()
-        frames[0].save(
-            buf,
-            format="GIF",
-            save_all=True,
-            append_images=frames[1:],
-            duration=DURATION_MS,
-            loop=0,
-            disposal=2,
-            optimize=False,
-        )
-        buf.seek(0)
+            # 3) 余白追加で横幅が増えるので、もう一度縮小（←ここが容量対策の要）
+            img = resize_max_side(img, MAX_SIDE)
 
-        st.success("アニメGIFを生成しました")
-        st.image(buf)
+            # 4) フレーム生成
+            frames = make_almost_still_frames(img)
+
+            # 5) 256色化（容量と互換性を安定させる）
+            qframes = [quantize_to_256(f) for f in frames]
+
+            # 6) 保存（安定優先で optimize は基本OFF）
+            do_optimize = OPTIMIZE_ALWAYS
+            # 例：小さいときだけ最適化したいなら次の1行に置き換え
+            # do_optimize = max(img.size) <= 640
+
+            buf = io.BytesIO()
+            qframes[0].save(
+                buf,
+                format="GIF",
+                save_all=True,
+                append_images=qframes[1:],
+                duration=DURATION_MS,
+                loop=0,
+                disposal=2,
+                optimize=do_optimize,
+            )
+            gif_bytes = buf.getvalue()
+
+        size_mb = len(gif_bytes) / (1024 * 1024)
+        st.success(f"GIFを生成しました（{size_mb:.2f} MB）")
+
+        # プレビュー（ここが重い環境なら、次の1行をコメントアウトしてOK）
+        st.image(gif_bytes)
+
         st.download_button(
             "GIFをダウンロード",
-            data=buf,
+            data=gif_bytes,
             file_name="animated.gif",
             mime="image/gif",
         )
+
+        # 目安表示（Postpone経由で不安定なら）
+        if size_mb >= 12:
+            st.warning("ファイルが大きめです（12MB以上）。Postpone→Xで失敗する場合は MAX_SIDE を 640 に下げると改善しやすいです。")
 
     except Exception as e:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
-
-
