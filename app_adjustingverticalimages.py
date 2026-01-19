@@ -44,7 +44,7 @@ def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
     縦長（w/h < TARGET_RATIO）のときだけ左右に余白を足して22:23に寄せる。
     横長（w/h >= TARGET_RATIO）はそのまま返す。
     """
-    # 余白を足すのでRGBAに寄せる（透過PNGにも対応しやすい）
+    # 余白を足すのでRGBAに寄せる
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGBA")
 
@@ -55,12 +55,11 @@ def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
     new_w = math.ceil(h * TARGET_RATIO)
     pad_left = (new_w - w) // 2
 
-    # 背景：透過ありなら透明、なければ白
-    has_alpha = "A" in img.getbands()
-    bg = (0, 0, 0, 0) if has_alpha else (255, 255, 255, 255)
+    # 白背景
+    bg = (255, 255, 255)
 
-    canvas = Image.new("RGBA", (new_w, h), bg)
-    canvas.paste(img.convert("RGBA"), (pad_left, 0))
+    canvas = Image.new("RGB", (new_w, h), bg)
+    canvas.paste(img, (pad_left, 0))
     return canvas
 
 
@@ -166,6 +165,7 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
 
 
 
