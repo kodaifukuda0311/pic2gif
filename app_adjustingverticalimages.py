@@ -7,7 +7,7 @@ from PIL import Image
 # アプリ設定（固定）
 # ======================
 APP_NAME = "JPG/PNG → アニメGIF変換器（Ver.2）"
-TARGET_RATIO = 22 / 23          # 幅/高さ
+TARGET_RATIO = 22 / 22.5          # 幅/高さ
 MAX_SIDE = 950                  # X・Postpone向けにサイズ抑制
 GIF_COLORS = 256                # 256色
 FRAMES_COUNT = 10               # フレーム数
@@ -165,6 +165,7 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
 
 
 
