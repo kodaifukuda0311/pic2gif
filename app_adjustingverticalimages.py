@@ -128,8 +128,6 @@ if uploaded_file:
 
             # 6) 保存（安定優先で optimize は基本OFF）
             do_optimize = OPTIMIZE_ALWAYS
-            # 例：小さいときだけ最適化したいなら次の1行に置き換え
-            # do_optimize = max(img.size) <= 640
 
             buf = io.BytesIO()
             qframes[0].save(
@@ -165,6 +163,7 @@ if uploaded_file:
         st.error(f"エラーが発生しました: {e}")
 else:
     st.info("画像を1枚アップロードしてください。")
+
 
 
 
