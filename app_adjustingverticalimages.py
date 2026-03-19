@@ -18,13 +18,12 @@ OPTIMIZE_ALWAYS = False
 
 st.set_page_config(page_title=APP_NAME, page_icon="🖼️")
 st.title(f"🖼️{APP_NAME}")
-st.write("1枚の画像から、ほぼ静止画に見えるアニメGIFを作ります（縦長画像は左右余白で22:23に）。")
+st.write("1枚の画像から、ほぼ静止画に見えるアニメGIFを作ります（縦長画像は左右余白で22:22.5に）。")
 
 uploaded_file = st.file_uploader("JPG または PNG をアップロード", type=["jpg", "jpeg", "png"])
 
 
 def ease_in_out_sine(t: float) -> float:
-    """0→1 を端でゆっくりにするイージング"""
     return 0.5 - 0.5 * math.cos(math.pi * t)
 
 
@@ -41,7 +40,7 @@ def resize_max_side(img: Image.Image, max_side: int) -> Image.Image:
 
 def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
     """
-    縦長（w/h < TARGET_RATIO）のときだけ左右に余白を足して22:23に寄せる。
+    縦長（w/h < TARGET_RATIO）のときだけ左右に余白を足して22:22.5に寄せる。
     横長（w/h >= TARGET_RATIO）はそのまま返す。
     """
     # 余白を足すのでRGBAに寄せる
@@ -64,7 +63,7 @@ def pad_to_target_ratio_if_portrait(img: Image.Image) -> Image.Image:
 
 
 def make_almost_still_frames(img: Image.Image):
-    """微ズームで「ほぼ静止に見える」フレーム列を作る"""
+    """微ズームでほぼ静止に見えるフレーム列"""
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGBA")
 
@@ -92,8 +91,7 @@ def make_almost_still_frames(img: Image.Image):
 
 def quantize_to_256(frame: Image.Image) -> Image.Image:
     """
-    GIF向けに256色パレットへ。
-    透過PNGはSNS/変換経路で崩れやすいので、互換性と容量優先で白合成→256色化。
+    GIF向けに256色パレットへ
     """
     if frame.mode == "RGBA":
         bg = Image.new("RGB", frame.size, (255, 255, 255))
@@ -114,7 +112,7 @@ if uploaded_file:
             # 1) 縮小
             img = resize_max_side(img, MAX_SIDE)
 
-            # 2) 縦長のみ左右余白で22:23へ
+            # 2) 縦長のみ左右余白で22:22.5へ
             img = pad_to_target_ratio_if_portrait(img)
 
             # 3) 余白追加で横幅が増えるので、もう一度縮小
