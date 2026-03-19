@@ -111,22 +111,22 @@ if uploaded_file:
             img = Image.open(uploaded_file)
             img.load()
 
-            # 1) まず縮小（入力がデカいと落ちる＆重いので）
+            # 1) 縮小
             img = resize_max_side(img, MAX_SIDE)
 
             # 2) 縦長のみ左右余白で22:23へ
             img = pad_to_target_ratio_if_portrait(img)
 
-            # 3) 余白追加で横幅が増えるので、もう一度縮小（←ここが容量対策の要）
+            # 3) 余白追加で横幅が増えるので、もう一度縮小
             img = resize_max_side(img, MAX_SIDE)
 
             # 4) フレーム生成
             frames = make_almost_still_frames(img)
 
-            # 5) 256色化（容量と互換性を安定させる）
+            # 5) 256色化
             qframes = [quantize_to_256(f) for f in frames]
 
-            # 6) 保存（安定優先で optimize は基本OFF）
+            # 6) 保存
             do_optimize = OPTIMIZE_ALWAYS
 
             buf = io.BytesIO()
@@ -145,7 +145,7 @@ if uploaded_file:
         size_mb = len(gif_bytes) / (1024 * 1024)
         st.success(f"GIFを生成しました（{size_mb:.2f} MB）")
 
-        # プレビュー（ここが重い環境なら、次の1行をコメントアウトしてOK）
+        # プレビュー
         st.image(gif_bytes)
 
         st.download_button(
@@ -155,7 +155,7 @@ if uploaded_file:
             mime="image/gif",
         )
 
-        # 目安表示（Postpone経由で不安定なら）
+        # 目安表示
         if size_mb >= 12:
             st.warning("ファイルが大きめです（12MB以上）。Postpone→Xで失敗する場合は MAX_SIDE を 640 に下げると改善しやすいです。")
 
